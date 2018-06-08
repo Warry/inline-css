@@ -1,10 +1,13 @@
 module InlineCss
     exposing
         ( mixin
-        , style
+        , element
+        , bloc
+        , styles
         , url
         , rgba
         , transparent
+        , Element
         , CssProperty
         , Size
         , zero
@@ -208,7 +211,7 @@ module InlineCss
     example : Html
     example state =
         div
-            [ style
+            [ styles
                 [ height (px 50)
                 , background "#1C1F26"
                 , color "#7A8092"
@@ -219,7 +222,7 @@ module InlineCss
 
 # Basics
 
-@docs CssProperty,style,mixin
+@docs CssProperty,Element,element,bloc,styles,mixin
 
 
 # Misc
@@ -329,6 +332,14 @@ type alias CssProperty =
     List ( String, String )
 
 
+{-| Html ctor
+-}
+type alias Element msg =
+    List (Html.Attribute msg)
+    -> List (Html.Html msg)
+    -> Html.Html msg
+
+
 {-| Css Property
 Using List to be able to make mixins
 -}
@@ -339,16 +350,43 @@ mixin =
 
 {-| Use your styles in Html.Attribute
 -}
-style : List CssProperty -> Html.Attribute a
-style stylesList =
+element : Element a -> List CssProperty -> Element a
+element n stls =
     let
-        styles =
+        cachedStyles =
+            stylesToAttributes stls
+    in
+        n << (++) cachedStyles
+
+
+{-| Styled div
+-}
+bloc : List CssProperty -> Element a
+bloc =
+    element Html.div
+
+
+stylesToAttributes : List CssProperty -> List (Html.Attribute a)
+stylesToAttributes =
+    List.concat
+        >> List.map
+            (\( x, y ) ->
+                Html.Attributes.style x y
+            )
+
+
+{-| Use your styles in Html.Attribute
+-}
+styles : List CssProperty -> Html.Attribute a
+styles stylesList =
+    let
+        stylesStr =
             List.map
                 (\( k, v ) -> k ++ ": " ++ v ++ ";")
                 (List.concat stylesList)
                 |> String.join " "
     in
-        Html.Attributes.property "style" (Encode.string styles)
+        Html.Attributes.property "style" (Encode.string stylesStr)
 
 
 prop : String -> String -> CssProperty
